@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBM i Full Stack Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --surface:   #111318;
+    --surface2:  #181c23;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.13);
+    --text:      #e8e6e0;
+    --muted:     #7a7870;
+    --accent:    #00b4d8;
+    --accent2:   #0077a8;
+    --green:     #3ddc84;
+    --amber:     #f0a500;
+    --coral:     #e05c4b;
+    --purple:    #9b7fe8;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+    --serif:     'IBM Plex Serif', serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,180,216,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,216,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* Header */
+  .header { margin-bottom: 48px; }
+  .header-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: clamp(28px, 5vw, 42px);
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  .header h1 strong { font-weight: 600; color: var(--accent); }
+  .header-desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  /* Controls bar */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 36px;
+    align-items: center;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  .control-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .toggle-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .toggle-btn:hover { border-color: var(--accent2); color: var(--text); }
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 500;
+  }
+
+  .stack-select {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 8px;
+    cursor: pointer;
+    outline: none;
+  }
+  .stack-select:focus { border-color: var(--accent); }
+
+  /* Section headers */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 32px 0 10px 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Layer rows */
+  .layer-row { margin-bottom: 4px; }
+
+  .layer-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 14px;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .layer-btn::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--layer-color, transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .layer-btn:hover { border-color: var(--border2); background: var(--surface2); }
+  .layer-btn:hover::before { opacity: 0.6; }
+  .layer-btn.active { border-color: var(--layer-color, var(--border2)); background: var(--surface2); }
+  .layer-btn.active::before { opacity: 1; }
+
+  .layer-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    background: var(--layer-bg, rgba(255,255,255,0.05));
+    border: 1px solid var(--layer-color, transparent);
+    color: var(--layer-color, var(--muted));
+    font-family: var(--mono);
+    font-weight: 500;
+  }
+
+  .layer-text { flex: 1; min-width: 0; }
+  .layer-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 1px;
+  }
+  .layer-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .layer-chevron {
+    color: var(--muted);
+    font-size: 10px;
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+  .layer-btn.active .layer-chevron { transform: rotate(180deg); color: var(--layer-color); }
+
+  /* Detail panel */
+  .detail-wrap {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
+  .detail-wrap.open { max-height: 800px; }
+
+  .detail-inner {
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    background: var(--surface2);
+    padding: 20px 20px 16px;
+    margin-top: -4px;
+  }
+
+  .detail-mode { display: none; }
+  .detail-mode.visible { display: block; }
+
+  .detail-body {
+    font-size: 13px;
+    color: #b0ae a8;
+    color: rgb(176,172,164);
+    line-height: 1.75;
+    margin-bottom: 14px;
+  }
+  .detail-body p + p { margin-top: 10px; }
+
+  /* Tags */
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--layer-color, var(--border2));
+    color: var(--layer-color, var(--muted));
+    background: transparent;
+    opacity: 0.8;
+  }
+
+  /* Action buttons */
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--layer-color, var(--accent)); color: var(--text); }
+  .action-btn.claude { border-color: var(--accent2); color: var(--accent); }
+  .action-btn.claude:hover { background: rgba(0,180,216,0.08); }
+  .action-btn .btn-icon { font-size: 12px; }
+
+  /* Custom stack inputs */
+  .custom-stack-section {
+    background: var(--surface);
+    border: 1px dashed var(--border2);
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 8px;
+  }
+  .custom-stack-section p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    font-family: var(--mono);
+  }
+  .custom-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .custom-field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .custom-field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .custom-field input:focus { border-color: var(--accent); }
+  .apply-btn {
+    margin-top: 12px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .apply-btn:hover { opacity: 0.85; }
+
+  /* Footer */
+  .footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .footer-left { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .footer-left a { color: var(--accent); text-decoration: none; }
+  .footer-left a:hover { text-decoration: underline; }
+  .footer-right { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .layer-row { animation: fadeIn 0.3s ease both; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .custom-fields { grid-template-columns: 1fr; }
+    .footer { flex-direction: column; }
+    .footer-right { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div class="header-eyebrow">// interactive reference</div>
+    <h1>IBM i <strong>Full Stack</strong> Explorer</h1>
+    <p class="header-desc">From POWER silicon to your application layer — an interactive map of how IBM i fits together, with beginner and reference modes for every layer.</p>
+  </header>
+
+  <div class="controls">
+    <div class="control-group">
+      <span class="control-label">Mode</span>
+      <button class="toggle-btn active" onclick="setMode('beginner')" id="btn-beginner">Beginner</button>
+      <button class="toggle-btn" onclick="setMode('reference')" id="btn-reference">Reference</button>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Toolchain</span>
+      <select class="stack-select" onchange="setStack(this.value)" id="stack-select">
+        <option value="python">Python / JupyterLab / Django</option>
+        <option value="node">Node.js / Express / REST API</option>
+        <option value="custom">Custom — enter your own</option>
+      </select>
+    </div>
+    <div class="control-group" style="cursor:pointer" onclick="toggleAll()">
+      <span class="control-label" id="expand-label">Expand all</span>
+    </div>
+  </div>
+
+  <div id="custom-stack-panel" style="display:none; margin-bottom:24px;">
+    <div class="custom-stack-section">
+      <p>// define your own toolchain — these replace the top 3 layers</p>
+      <div class="custom-fields">
+        <div class="custom-field">
+          <label>Analytics / Notebooks</label>
+          <input type="text" id="c1-name" placeholder="e.g. R / RStudio">
+        </div>
+        <div class="custom-field">
+          <label>Description</label>
+          <input type="text" id="c1-sub" placeholder="e.g. Statistical analysis layer">
+        </div>
+        <div class="custom-field">
+          <label>Web Framework</label>
+          <input type="text" id="c2-name" placeholder="e.g. Spring Boot / Java">
+        </div>
+        <div class="custom-field">
+          <label>Description</label>
+          <input type="text" id="c2-sub" placeholder="e.g. REST API layer">
+        </div>
+        <div class="custom-field">
+          <label>UI / Access Layer</label>
+          <input type="text" id="c3-name" placeholder="e.g. Angular / SAP UI5">
+        </div>
+        <div class="custom-field">
+          <label>Description</label>
+          <input type="text" id="c3-sub" placeholder="e.g. Browser-based front end">
+        </div>
+      </div>
+      <button class="apply-btn" onclick="applyCustom()">Apply custom stack →</button>
+    </div>
+  </div>
+
+  <div id="stack-container"></div>
+
+  <footer class="footer">
+    <div class="footer-left">
+      IBM i Full Stack Explorer · Open source learning resource<br>
+      Contribute or fork: <a href="https://github.com/" target="_blank">github.com/your-repo</a><br>
+      IBM documentation: <a href="https://www.ibm.com/docs/en/i" target="_blank">ibm.com/docs/en/i</a>
+    </div>
+    <div class="footer-right">
+      Built with vanilla HTML/CSS/JS<br>
+      No dependencies · Works offline<br>
+      IBM i 7.3 – 7.5 / Power9–Power11
+    </div>
+  </footer>
+
+</div>
+
+<script>
+const STACKS = {
+  python: {
+    analytics: {
+      name: 'Python / JupyterLab',
+      sub: 'pandas · pyodbc · openpyxl · numpy',
+      icon: 'Py',
+      color: '#3ddc84',
+      tags: ['Python 3.x', 'JupyterLab', 'pandas', 'pyodbc', 'openpyxl', 'numpy', 'Proxmox LXC'],
+      beginner: `Python is the most popular language for data analysis and automation. Running in JupyterLab (a browser-based notebook environment), it connects to IBM i's DB2 database over ODBC — a standard database connectivity protocol. You write SQL queries in Python, pull the results into a table structure called a DataFrame, and produce Excel reports or dashboards. No IBM i knowledge required to get started; your Python code runs on a separate Linux server and talks to the AS/400 over the network.`,
+      reference: `Python 3.x running on a Linux LXC (Proxmox or similar). Connects to DB2 for i via pyodbc using a configured DSN (Data Source Name) pointing to IBM i Access ODBC driver. pandas DataFrames are the primary transformation layer. openpyxl handles Excel output with named Tables, AGGREGATE formulas, and freeze panes. JupyterLab is the interactive IDE; Jupytext enables .py-format notebooks for version control. Environment variables (.env) store credentials; python-dotenv loads them at runtime.`,
+      docs: 'https://www.ibm.com/docs/en/i/7.5?topic=odbc-programming',
+      claude: 'Explain how to connect Python and pandas to IBM i DB2 using pyodbc'
+    },
+    framework: {
+      name: 'Django',
+      sub: 'Web framework · Admin · ORM · Celery',
+      icon: 'Dj',
+      color: '#3ddc84',
+      tags: ['Django 4.x', 'Django ORM', 'Celery', 'REST framework', 'Admin UI', 'websrv01'],
+      beginner: `Django is a Python web framework — it lets you turn your data and reports into web applications that anyone on your network can access via a browser. Instead of emailing Excel files, you build a web page that runs the report live. Django handles the web server, user login, database connections, and page rendering. It's the "glue" between your IBM i data and a browser-based interface. A Django app running on a Linux server can query IBM i just like a Jupyter notebook does.`,
+      reference: `Django running on a Linux server (e.g. websrv01) behind a reverse proxy (nginx/Caddy) or Cloudflare Tunnel for external access. Models map to DB2 tables via pyodbc or a custom database backend. Celery + Redis handles async report generation. Django Admin provides rapid CRUD interfaces. DRF (Django REST Framework) exposes JSON APIs consumed by JavaScript front ends or other services. Deployment: gunicorn WSGI server, systemd service, Cloudflare Tunnel for zero-port-forward remote access.`,
+      docs: 'https://docs.djangoproject.com/',
+      claude: 'How do I build a Django web app that queries IBM i DB2 data?'
+    },
+    ui: {
+      name: 'Browser UI / ACS / 5250',
+      sub: 'Django templates · ACS Run SQL · VS Code',
+      icon: 'UI',
+      color: '#3ddc84',
+      tags: ['Django templates', 'ACS Run SQL Scripts', '5250 emulator', 'VS Code + Code for IBM i', 'Cloudflare Tunnel'],
+      beginner: `This is everything the end user actually sees and touches. Django renders web pages in the browser. IBM Access Client Solutions (ACS) is a desktop app IBM provides that includes a SQL query tool and a 5250 green-screen emulator — the traditional IBM i interface that looks like an old terminal. VS Code with the "Code for IBM i" extension is how developers browse source code and compile programs without using the green screen. Think of this layer as the collection of windows, browsers, and terminals your team actually works in every day.`,
+      reference: `Multiple concurrent UI surfaces: Django-rendered HTML/CSS/JS templates for business apps; ACS Run SQL Scripts for ad-hoc DB2 queries and schema exploration; 5250 emulation (via ACS or tn5250j) for WRKACTJOB, WRKJOBSCDE, and legacy program access; VS Code + "Code for IBM i" extension for source member editing, compile actions, and library browsing over SSH; Claude + IBM i MCP for natural-language DB2 and source queries. External access via Cloudflare Tunnel — no open inbound ports required.`,
+      docs: 'https://www.ibm.com/support/pages/ibm-i-access-client-solutions',
+      claude: 'What are all the modern ways to access IBM i without using the 5250 green screen?'
+    }
+  },
+  node: {
+    analytics: {
+      name: 'Node.js / Express',
+      sub: 'REST API · idb-connector · JSON services',
+      icon: 'Nd',
+      color: '#f0a500',
+      tags: ['Node.js 18+', 'Express', 'idb-connector', 'better-ibmi', 'REST API', 'JSON'],
+      beginner: `Node.js is a JavaScript runtime that lets you build web servers and APIs. Running on a Linux server alongside your IBM i system, it can connect to DB2 for i and expose data as REST APIs — the standard way modern web and mobile apps communicate. Instead of a Python script producing an Excel file, Node.js produces a JSON response that any front end (React, Vue, mobile app) can consume. It's the bridge between the old IBM i world and modern web development.`,
+      reference: `Node.js running on Linux (or directly in IBM i PASE via YUM). idb-connector or itoolkit provides DB2 for i connectivity. Express handles HTTP routing and middleware. Data is serialized as JSON and consumed by front-end SPAs or third-party integrations. For direct on-IBM-i deployment: Node.js installed via YUM in PASE, process managed via PM2 or systemd, accessible via IBM i HTTP Server or reverse proxy. Can also serve as an MCP server for AI tool integrations.`,
+      docs: 'https://ibmi-oss-docs.github.io/odbc/README.html',
+      claude: 'How do I connect Node.js to IBM i DB2 and build a REST API?'
+    },
+    framework: {
+      name: 'REST API layer',
+      sub: 'Express routes · JWT auth · OpenAPI',
+      icon: 'API',
+      color: '#f0a500',
+      tags: ['Express.js', 'JWT', 'OpenAPI / Swagger', 'middleware', 'CORS', 'rate limiting'],
+      beginner: `A REST API is a standardized way for programs to talk to each other over the web. Your IBM i data becomes accessible via URLs — for example, a mobile app might call \`GET /api/inventory?style=12345\` and get back a JSON list of stock levels. JWT (JSON Web Tokens) handles authentication so only authorized users can access the data. OpenAPI generates interactive documentation automatically. This layer is what makes your IBM i data "modern" — consumable by any language, any front end, any platform.`,
+      reference: `Express.js application with route-level JWT authentication middleware. OpenAPI 3.x spec drives both documentation (Swagger UI) and request validation (express-openapi-validator). CORS configured for allowed front-end origins. Rate limiting via express-rate-limit. DB2 queries via idb-connector connection pool. Error handling middleware normalizes IBM i SQL error codes into HTTP status codes. PM2 for process management with cluster mode for multi-core utilization.`,
+      docs: 'https://expressjs.com/',
+      claude: 'How do I build a REST API with Node.js and Express that authenticates with JWT?'
+    },
+    ui: {
+      name: 'React / SPA front end',
+      sub: 'Browser app · Vite · REST consumer',
+      icon: 'UI',
+      color: '#f0a500',
+      tags: ['React 18', 'Vite', 'TanStack Query', 'REST consumer', 'GitHub Pages', 'Cloudflare'],
+      beginner: `React is a JavaScript library for building interactive web interfaces. It runs entirely in the browser — no page reloads, instant updates. It calls your Node.js REST API to get IBM i data and displays it as tables, charts, and forms. Vite is the build tool that bundles everything into a deployable package. GitHub Pages can host the built output for free. This is the layer your end users interact with: a fast, modern web application backed by decades of IBM i business data.`,
+      reference: `React 18 SPA built with Vite. TanStack Query (React Query) manages server state, caching, and background refetch against the Express REST API. Routing via React Router v6. Component library choice: Shadcn/ui (copy-paste components) or Radix UI primitives. Build output is static HTML/CSS/JS deployable to GitHub Pages, Netlify, or Cloudflare Pages. Environment variables via .env files control API base URL per environment. TypeScript recommended for API response typing.`,
+      docs: 'https://react.dev/',
+      claude: 'How do I build a React front end that consumes a REST API from IBM i data?'
+    }
+  }
+};
+
+const CORE_LAYERS = [
+  {
+    group: 'Physical infrastructure',
+    layers: [
+      {
+        id: 'hw',
+        name: 'Hardware',
+        sub: 'POWER processor · memory · I/O adapters',
+        icon: 'HW',
+        color: '#7a7870',
+        tags: ['POWER11', 'POWER10', 'POWER9', 'SMT8', 'ECC memory', 'OMI DDR5', 'SAS/NVMe'],
+        beginner: `IBM i runs exclusively on IBM's own POWER processors — you can't install it on a regular PC or cloud server. POWER is a chip architecture (like Intel x86, but different) designed from the ground up for reliability and business workloads. The hardware includes special features for error correction in memory, so a single memory chip can fail and the system keeps running. Most IBM i installations run as a "logical partition" (LPAR) — think of it like a virtual machine — sharing one physical POWER server with other operating systems like AIX or Linux.`,
+        reference: `IBM i runs exclusively on POWER architecture. Current generation: Power11 (July 2025) — up to 16 cores/chip, SMT8 (8 hardware threads/core), DDR5 via OMI buffered memory architecture (32 DDR ports/socket through 16 intermediate buffers, 4× bandwidth vs direct-attach). Power10 (2021): 7nm Samsung, 18B transistors, Matrix Math Accelerator (MMA) in-core. Single-level storage is hardware-assisted: the MMU supports tagged 64-bit virtual addresses spanning RAM and disk in one unified address space. LPARs are managed by PowerVM hypervisor or HMC.`,
+        docs: 'https://www.ibm.com/products/power-systems',
+        claude: 'Tell me more about POWER processor architecture for IBM i'
+      },
+      {
+        id: 'lpar',
+        name: 'LPAR / PowerVM',
+        sub: 'Logical partitions · hypervisor · HMC',
+        icon: 'LP',
+        color: '#7a7870',
+        tags: ['PowerVM', 'HMC', 'LPAR', 'vCPU', 'Shared processor pools', 'Live Partition Mobility'],
+        beginner: `A single IBM POWER server is usually divided into multiple "logical partitions" (LPARs) — independent virtual systems, each running its own operating system. One LPAR might run IBM i for your business applications, another might run Linux for web servers, and a third might run AIX. They share the same physical hardware but are completely isolated from each other. The Hardware Management Console (HMC) is the admin interface for managing these partitions — allocating CPU, memory, and storage to each one.`,
+        reference: `PowerVM hypervisor manages LPAR lifecycle, resource allocation, and I/O virtualization. Key concepts: dedicated vs shared processor LPARs (entitled capacity in processing units); virtual SCSI and virtual Ethernet via Virtual I/O Server (VIOS); Live Partition Mobility (LPM) for online migration between physical frames; Capacity on Demand (CoD) for temporary CPU/memory expansion. HMC provides REST API for automation. IBM i LPARs require a specific PowerVM license tier. Typical production setup: IBM i LPAR + VIOS LPAR(s) + optional AIX/Linux LPARs on same frame.`,
+        docs: 'https://www.ibm.com/docs/en/power10/9105-41A?topic=management-logical-partitions',
+        claude: 'Explain IBM i LPARs and PowerVM — how does partitioning work on POWER hardware?'
+      }
+    ]
+  },
+  {
+    group: 'Operating system',
+    layers: [
+      {
+        id: 'os',
+        name: 'IBM i OS',
+        sub: 'Licensed Internal Code · object model · security',
+        icon: 'OS',
+        color: '#00b4d8',
+        tags: ['IBM i 7.5', 'IBM i 7.4', 'IBM i 7.3', 'LIC', 'QSYS', 'Object model', 'QSECURITY', 'PTFs'],
+        beginner: `IBM i (formerly OS/400) is the operating system — the software that manages all the hardware resources and runs your programs. It's unique because everything on the system is an "object" with a type, owner, and permission level — programs, data files, even user profiles are all objects. There's no traditional file system like Windows or Linux; instead everything lives in "libraries" (similar to folders, but smarter). The OS also has a built-in database (DB2 for i) and a built-in web server — no separate installation needed for either.`,
+        reference: `IBM i OS sits atop the Licensed Internal Code (LIC) — a microkernel-like layer abstracting POWER hardware. The object model is fundamental: every artifact (*PGM, *FILE, *USRPRF, *DTAARA, etc.) has a type, owner, primary group, and authority list enforced by the OS at every access. Library lists define the object resolution path (LIBL). Security levels (QSECURITY system value) range from 10 (no security) to 50 (C2/B3 compliant). PTFs (Program Temporary Fixes) are the patch mechanism. System values (WRKSYSVAL) control global behavior. QSYS2 catalog provides SQL-accessible system metadata.`,
+        docs: 'https://www.ibm.com/docs/en/i/7.5?topic=systems-getting-started-i',
+        claude: 'Explain the IBM i object model, library system, and how it differs from a traditional file system'
+      },
+      {
+        id: 'db2',
+        name: 'DB2 for i',
+        sub: 'Integrated relational database · no install required',
+        icon: 'DB',
+        color: '#00b4d8',
+        tags: ['DB2 for i', 'Physical files (PF)', 'Logical files (LF)', 'SQL tables', 'QSYS2', 'Journals', 'Triggers', 'ODBC/JDBC'],
+        beginner: `DB2 for i is IBM i's built-in relational database — and unlike every other platform, it doesn't need to be installed or licensed separately. It's woven into the operating system itself. You can query it with standard SQL. Data is stored in either "physical files" (the old DDS-based format, like old-school tables) or modern SQL tables — both work side by side. The database supports transactions, foreign keys, triggers, indexes, and everything you'd expect from an enterprise database. It's one of the most powerful and overlooked features of the platform.`,
+        reference: `DB2 for i is OS-integrated — no separate instance, no startup daemon, no separate licensing for base function. Two storage paradigms coexist: DDS-defined physical files (PFs) with record-level access via RPG CHAIN/READ/WRITE opcodes; and SQL-defined tables accessed via embedded SQL, JDBC, or ODBC. Logical files (LFs) are DDS-defined views/indexes over PFs. Modern SQL objects: indexes, views, stored procedures, UDFs, triggers, sequences. QSYS2 and SYSTOOLS schemas expose system metadata. Journal-based commitment control provides ACID transactions. Row/column access control (RCAC) for fine-grained security.`,
+        docs: 'https://www.ibm.com/docs/en/i/7.5?topic=overview-db2-i',
+        claude: 'What is the difference between DDS physical files, logical files, and SQL tables on IBM i?'
+      },
+      {
+        id: 'wm',
+        name: 'Work management',
+        sub: 'Subsystems · job queues · scheduling · memory pools',
+        icon: 'WM',
+        color: '#00b4d8',
+        tags: ['QBATCH', 'QINTER', 'SBMJOB', 'ADDJOBSCDE', 'WRKACTJOB', 'Job queues', 'Memory pools', 'Output queues'],
+        beginner: `IBM i doesn't run programs in "processes" like Linux or Windows — it uses "jobs" running inside "subsystems." Think of a subsystem as a gated execution environment: QBATCH handles background batch jobs, QINTER handles interactive green-screen sessions, and QUSRWRK handles server jobs. When you schedule a program to run automatically every Wednesday morning, you're submitting a job to a job queue that a subsystem picks up. WRKACTJOB is like Task Manager — it shows you every job currently running on the system and lets you investigate or cancel them.`,
+        reference: `Work management controls execution environment for all IBM i jobs. Subsystem description (*SBSD) defines routing entries, job queues, memory pool allocations, and autostart job entries. Key subsystems: QBATCH (batch), QINTER (interactive 5250), QUSRWRK (prestart server jobs), QSYSWRK (system work), QHTTPSVR (HTTP server). Job submission: SBMJOB routes via JOBQ to a subsystem's routing table. Job scheduler: ADDJOBSCDE creates recurring schedule entries (WRKJOBSCDE for management). Memory pools: *BASE, *INTERACT, *SPOOL, *SHRPOOL1-10 — tunable via WRKSHRPOOL. WRKACTJOB / QSYS2.ACTIVE_JOB_INFO for monitoring.`,
+        docs: 'https://www.ibm.com/docs/en/i/7.5?topic=management-work',
+        claude: 'Explain IBM i subsystems, job queues, and how batch job scheduling works'
+      },
+      {
+        id: 'ifs',
+        name: 'IFS',
+        sub: 'Integrated File System · POSIX · stream files',
+        icon: 'IFS',
+        color: '#00b4d8',
+        tags: ['/QOpenSys', '/home', '/tmp', 'PASE', 'Stream files', 'NFS', 'SMB/CIFS', 'SSH access'],
+        beginner: `IBM i has two parallel storage worlds: the traditional library/object system (QSYS) and the IFS — a POSIX-compatible file system that looks and works like Linux or macOS. The IFS supports regular folders and files, so open-source tools like Python, Node.js, and Git feel right at home. When you SSH into IBM i and see /home/yourname, you're in the IFS. Stream files in the IFS are how IBM i stores non-object data like log files, JSON documents, or Python scripts. The two worlds can see each other: /QSYS.LIB/CFI2000.LIB/ is the IFS path to the CFI2000 library.`,
+        reference: `IFS is a POSIX-compliant hierarchical file system overlay on IBM i, separate from but coexisting with the QSYS object namespace. Root filesystem mounts: /QSYS.LIB (library objects via IFS paths), /QOpenSys (PASE UNIX environment), /home (user home directories), /tmp. Supports symbolic links, POSIX permissions (owner/group/other), and extended attributes. Network shares: NFS server built-in; SMB/CIFS via IBM i NetServer (Windows file sharing). IFS stream files use byte-stream I/O vs. IBM i record-level I/O. CCSID (Coded Character Set Identifier) governs character encoding per object — critical when exchanging data between IFS and QSYS objects.`,
+        docs: 'https://www.ibm.com/docs/en/i/7.5?topic=systems-integrated-file-system',
+        claude: 'How does the IBM i IFS relate to the QSYS library structure, and when would I use each?'
+      }
+    ]
+  },
+  {
+    group: 'Application tier',
+    layers: [
+      {
+        id: 'cl',
+        name: 'CL / RPG programs',
+        sub: 'Native compiled programs · business logic',
+        icon: 'CL',
+        color: '#9b7fe8',
+        tags: ['RPG IV', 'ILE CL', '*PGM', '*SRVPGM', '*MODULE', 'CRTBNDRPG', 'CRTCLPGM', 'QRPGLESRC', 'QCLSRC'],
+        beginner: `CL (Control Language) and RPG are the native programming languages of IBM i. CL is like a strongly-typed shell script — it automates system tasks, calls programs, submits jobs, and handles errors. RPG (Report Program Generator) is the business logic workhorse: it powers inventory systems, order processing, invoicing, and virtually every core business function in IBM i shops. Both languages compile into program objects (*PGM) that live in libraries. Most IBM i installations have decades of RPG programs — some from the 1980s — still running reliably in production today.`,
+        reference: `ILE (Integrated Language Environment) is the modern compilation model. Compilation units: *MODULE (single source member) → bound into *PGM or *SRVPGM via binder. Service programs (*SRVPGM) are shared libraries — procedures exported via binding directory (*BNDDIR). RPG IV (fully free-form since V7.1): /FREE notation, procedure-based structure, built-in functions (%SCAN, %SUBST, %EDITC, etc.), embedded SQL via /EXEC SQL. ILE CL: structured loops (FOR/DOW/DOU), MONMSG for error handling, QSYS2.QCMDEXC for SQL→CL bridging. DDS source in QDDSSRC defines physical/logical file schemas. Source members managed in QRPGLESRC, QCLSRC, QDDSSRC.`,
+        docs: 'https://www.ibm.com/docs/en/i/7.5?topic=rpg-ile-reference',
+        claude: 'Explain ILE concepts on IBM i — modules, service programs, and binding directories'
+      },
+      {
+        id: 'pase',
+        name: 'PASE / open-source',
+        sub: 'AIX binary layer · Python · Node.js · Git · YUM',
+        icon: 'OSS',
+        color: '#9b7fe8',
+        tags: ['PASE', 'YUM', 'Python 3', 'Node.js 18+', 'Git', 'bash', 'SSH server', '/QOpenSys/pkgs', 'rpm-nodeps'],
+        beginner: `PASE (Portable Application Solutions Environment) is an AIX-compatible runtime built into IBM i. It lets you run open-source tools that were compiled for AIX/Linux — like Python, Node.js, Git, and bash — directly on the IBM i system. This means you don't need a separate Linux server to run Python; you can run it right on the AS/400 itself. IBM maintains a YUM package repository (like apt or brew for Linux/Mac) that makes installing and updating these tools straightforward. PASE programs live in the IFS at /QOpenSys and run as their own job type.`,
+        reference: `PASE provides an AIX 7.2-compatible POSIX runtime within IBM i. Binary compatibility layer: AIX-compiled ELF binaries execute natively. Package management: YUM (bootstrapped via IBM's open-source mirror at public.dhe.ibm.com) installs RPM packages to /QOpenSys/pkgs. Key packages: python39, python3-pip, nodejs18, git, bash, gcc, make, openssl, openssh. PASE jobs run under job type *INTERACT or *BATCH with PASE job description. Path: /QOpenSys/pkgs/bin for package binaries. SSH server (OpenSSH) enables VS Code Remote and terminal access. pyodbc installed via pip connects PASE Python to DB2 for i via the iSeriesAccess ODBC driver.`,
+        docs: 'https://ibmi-oss-docs.github.io/',
+        claude: 'How does PASE work on IBM i and how do I install Python or Node.js on the system?'
+      },
+      {
+        id: 'odbc',
+        name: 'ODBC / JDBC / ACS',
+        sub: 'Client connectivity · IBM i Access · DDM/DRDA',
+        icon: 'OD',
+        color: '#9b7fe8',
+        tags: ['IBM i Access', 'ODBC driver', 'JDBC', 'ACS', 'DSN', 'DRDA', 'Port 446 / 8471', 'idb-connector'],
+        beginner: `To connect external tools (Python, Java apps, Excel) to IBM i's DB2 database, you need a "driver" — software that translates standard database calls into IBM i's proprietary protocol. IBM provides this as "IBM i Access Client Solutions" (ACS), a free download. Once installed, you configure a DSN (Data Source Name) — basically a nickname like "CUPID400" — and any app that supports ODBC or JDBC can use that nickname to query DB2 without knowing the underlying protocol details. ACS also includes a graphical SQL editor, schema browser, and the 5250 green-screen emulator.`,
+        reference: `IBM i Access Client Solutions (ACS) installs ODBC and JDBC drivers on Windows/macOS/Linux clients. ODBC driver communicates via DDM (Distributed Data Management) / DRDA protocol over TCP port 446 (cleartext) or 8471 (SSL). DSN configuration: system name/IP, default library, naming convention (*SYS vs *SQL), sort sequence, CCSID. pyodbc connects via: pyodbc.connect(f'DSN={dsn};UID={uid};PWD={pwd}'). For on-box PASE Python: idb-connector npm package or ibm_db Python package use the native DB2 CLI interface without network overhead. ACS Run SQL Scripts provides GUI for DDL/DML with schema browser and explain plan.`,
+        docs: 'https://www.ibm.com/support/pages/ibm-i-access-client-solutions',
+        claude: 'How does IBM i Access ODBC work and how do I configure a DSN for Python connectivity?'
+      }
+    ]
+  }
+];
+
+let currentMode = 'beginner';
+let currentStack = 'python';
+let allExpanded = false;
+let openLayers = new Set();
+
+function buildCustomToolchainLayers() {
+  const c1n = document.getElementById('c1-name').value || 'Analytics tool';
+  const c1s = document.getElementById('c1-sub').value || 'Your analytics layer';
+  const c2n = document.getElementById('c2-name').value || 'Web framework';
+  const c2s = document.getElementById('c2-sub').value || 'Your application layer';
+  const c3n = document.getElementById('c3-name').value || 'UI / Access layer';
+  const c3s = document.getElementById('c3-sub').value || 'Your user interface layer';
+  return {
+    analytics: {
+      name: c1n, sub: c1s, icon: c1n.slice(0,2).toUpperCase(), color: '#e05c4b',
+      tags: ['Custom', 'User-defined'],
+      beginner: `This is your custom analytics or data processing layer. Edit the description above to explain how this tool connects to IBM i DB2 and what it does with the data.`,
+      reference: `Custom toolchain entry. Replace this text with technical reference details — connection method, libraries used, configuration, and deployment notes.`,
+      docs: 'https://www.ibm.com/docs/en/i', claude: 'How do I connect a custom tool to IBM i DB2?'
+    },
+    framework: {
+      name: c2n, sub: c2s, icon: c2n.slice(0,2).toUpperCase(), color: '#e05c4b',
+      tags: ['Custom', 'User-defined'],
+      beginner: `This is your custom application framework layer. Edit the fields above to describe how this framework exposes IBM i data to end users or other systems.`,
+      reference: `Custom toolchain entry. Add technical reference details for your framework — routing, authentication, DB2 integration pattern, and deployment target.`,
+      docs: 'https://www.ibm.com/docs/en/i', claude: 'How do I build a web application on top of IBM i data?'
+    },
+    ui: {
+      name: c3n, sub: c3s, icon: c3n.slice(0,2).toUpperCase(), color: '#e05c4b',
+      tags: ['Custom', 'User-defined'],
+      beginner: `This is your custom UI or access layer — the interface your end users actually interact with. Edit the fields above to describe what this layer provides.`,
+      reference: `Custom toolchain entry. Document the UI framework, component library, build tooling, and deployment approach here.`,
+      docs: 'https://www.ibm.com/docs/en/i', claude: 'What are the best UI options for IBM i applications?'
+    }
+  };
+}
+
+function getToolchainLayers() {
+  if (currentStack === 'custom') return buildCustomToolchainLayers();
+  return STACKS[currentStack];
+}
+
+function renderStack() {
+  const container = document.getElementById('stack-container');
+  container.innerHTML = '';
+
+  const toolchain = getToolchainLayers();
+  const toolchainGroup = {
+    group: 'Your toolchain',
+    layers: [
+      { id: 'tc-analytics', ...toolchain.analytics },
+      { id: 'tc-framework', ...toolchain.framework },
+      { id: 'tc-ui', ...toolchain.ui }
+    ]
+  };
+
+  const allGroups = [...CORE_LAYERS, toolchainGroup];
+
+  allGroups.forEach(group => {
+    const secLabel = document.createElement('div');
+    secLabel.className = 'section-label';
+    secLabel.textContent = group.group;
+    container.appendChild(secLabel);
+
+    group.layers.forEach(layer => {
+      const row = document.createElement('div');
+      row.className = 'layer-row';
+
+      const isOpen = openLayers.has(layer.id);
+
+      const btn = document.createElement('button');
+      btn.className = 'layer-btn' + (isOpen ? ' active' : '');
+      btn.style.setProperty('--layer-color', layer.color);
+      btn.style.setProperty('--layer-bg', layer.color + '18');
+      btn.setAttribute('aria-expanded', isOpen);
+
+      btn.innerHTML = `
+        <div class="layer-icon" style="--layer-color:${layer.color};--layer-bg:${layer.color}18">${layer.icon}</div>
+        <div class="layer-text">
+          <div class="layer-name">${layer.name}</div>
+          <div class="layer-sub">${layer.sub}</div>
+        </div>
+        <span class="layer-chevron">▼</span>
+      `;
+
+      btn.onclick = () => {
+        if (openLayers.has(layer.id)) {
+          openLayers.delete(layer.id);
+        } else {
+          openLayers.add(layer.id);
+        }
+        renderStack();
+      };
+
+      const detailWrap = document.createElement('div');
+      detailWrap.className = 'detail-wrap' + (isOpen ? ' open' : '');
+
+      const inner = document.createElement('div');
+      inner.className = 'detail-inner';
+      inner.style.setProperty('--layer-color', layer.color);
+
+      const modeText = layer[currentMode] || layer.beginner;
+
+      inner.innerHTML = `
+        <div class="detail-body"><p>${modeText}</p></div>
+        <div class="tags">${layer.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        <div class="actions">
+          <a class="action-btn claude" href="https://claude.ai/new?q=${encodeURIComponent(layer.claude)}" target="_blank">
+            <span class="btn-icon">✦</span> Ask Claude
+          </a>
+          <a class="action-btn" href="${layer.docs}" target="_blank">
+            <span class="btn-icon">⊞</span> IBM Docs
+          </a>
+        </div>
+      `;
+
+      detailWrap.appendChild(inner);
+      row.appendChild(btn);
+      row.appendChild(detailWrap);
+      container.appendChild(row);
+    });
+  });
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-beginner').classList.toggle('active', mode === 'beginner');
+  document.getElementById('btn-reference').classList.toggle('active', mode === 'reference');
+  renderStack();
+}
+
+function setStack(val) {
+  currentStack = val;
+  const customPanel = document.getElementById('custom-stack-panel');
+  customPanel.style.display = val === 'custom' ? 'block' : 'none';
+  renderStack();
+}
+
+function applyCustom() {
+  renderStack();
+}
+
+function toggleAll() {
+  allExpanded = !allExpanded;
+  document.getElementById('expand-label').textContent = allExpanded ? 'Collapse all' : 'Expand all';
+  const allIds = [
+    ...CORE_LAYERS.flatMap(g => g.layers.map(l => l.id)),
+    'tc-analytics', 'tc-framework', 'tc-ui'
+  ];
+  if (allExpanded) {
+    allIds.forEach(id => openLayers.add(id));
+  } else {
+    openLayers.clear();
+  }
+  renderStack();
+}
+
+renderStack();
+</script>
+</body>
+</html>
